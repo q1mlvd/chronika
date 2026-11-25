@@ -1,6 +1,6 @@
 // Офлайн-кэш: сайт открывается даже без интернета.
-const CACHE = 'chronicle-v4';
-const ASSETS = ['./', 'index.html', 'styles.css?v=4', 'app.js?v=4', 'config.js?v=4', 'icon.svg', 'manifest.webmanifest'];
+const CACHE = 'chronicle-v5';
+const ASSETS = ['./', 'index.html', 'styles.css?v=5', 'app.js?v=5', 'config.js?v=5', 'icon.svg', 'manifest.webmanifest'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS))); self.skipWaiting(); });
 self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then((k) => Promise.all(k.filter((x) => x !== CACHE).map((x) => caches.delete(x))))); self.clients.claim(); });
 self.addEventListener('fetch', (e) => {

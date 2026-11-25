@@ -1,17 +1,17 @@
 <!doctype html>
-<html lang="ru">
+<html lang="uk">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Хроника — дневник продуктивности</title>
-  <meta name="description" content="Личный дневник дел с автоматическими отчётами за неделю и месяц.">
+  <title>Хроніка — щоденник продуктивності</title>
+  <meta name="description" content="Особистий щоденник справ і фінансів з автоматичними звітами за тиждень і місяць.">
   <meta name="theme-color" content="#0d0f14">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=4">
+  <link rel="stylesheet" href="styles.css?v=5">
 </head>
 <body>
   <div class="bg-glow" aria-hidden="true"></div>
@@ -19,16 +19,16 @@
   <header class="topbar">
     <div class="brand">
       <img src="icon.svg" alt="" width="30" height="30">
-      <span>Хроника</span>
+      <span>Хроніка</span>
     </div>
     <nav class="tabs" role="tablist">
-      <button class="tab active" data-view="today" role="tab">Сегодня</button>
-      <button class="tab" data-view="history" role="tab">История</button>
-      <button class="tab" data-view="money" role="tab">Деньги</button>
-      <button class="tab" data-view="reports" role="tab">Отчёты</button>
-      <button class="tab" data-view="settings" role="tab" aria-label="Настройки">⚙</button>
+      <button class="tab active" data-view="today" role="tab">Сьогодні</button>
+      <button class="tab" data-view="history" role="tab">Історія</button>
+      <button class="tab" data-view="money" role="tab">Гроші</button>
+      <button class="tab" data-view="reports" role="tab">Звіти</button>
+      <button class="tab" data-view="settings" role="tab" aria-label="Налаштування">⚙</button>
     </nav>
-    <div class="sync" id="syncBadge" title="Где хранятся данные">
+    <div class="sync" id="syncBadge" title="Де зберігаються дані">
       <span class="dot"></span><span class="label">Локально</span>
     </div>
   </header>
@@ -41,71 +41,71 @@
       <div class="hero">
         <div>
           <p class="eyebrow" id="todayLabel"></p>
-          <h1 id="greeting">Что сделал сегодня?</h1>
+          <h1 id="greeting">Що зробив сьогодні?</h1>
         </div>
         <div class="kpis-mini">
-          <div class="kpi-mini"><span class="num" id="streakNum">0</span><span class="cap">🔥 дней подряд</span></div>
-          <div class="kpi-mini"><span class="num" id="weekNum">0</span><span class="cap">дел за неделю</span></div>
-          <div class="kpi-mini"><span class="num" id="weekHours">0ч</span><span class="cap">часов за неделю</span></div>
+          <div class="kpi-mini"><span class="num" id="streakNum">0</span><span class="cap">🔥 днів поспіль</span></div>
+          <div class="kpi-mini"><span class="num" id="weekNum">0</span><span class="cap">справ за тиждень</span></div>
+          <div class="kpi-mini"><span class="num" id="weekHours">0 год</span><span class="cap">годин за тиждень</span></div>
         </div>
       </div>
 
       <div class="grid-2">
         <div class="card">
           <div class="card-head">
-            <h2>Новая запись</h2>
+            <h2>Новий запис</h2>
             <input type="date" id="entryDate" class="date-input">
           </div>
           <form id="entryForm" autocomplete="off">
-            <textarea id="entryText" rows="3" placeholder="Например: дописал лендинг, сходил в зал, прочитал 30 страниц…" required></textarea>
+            <textarea id="entryText" rows="3" placeholder="Наприклад: доробив лендинг, сходив у зал, прочитав 30 сторінок…" required></textarea>
             <div class="row">
               <div class="field grow">
-                <label>Категория</label>
+                <label>Категорія</label>
                 <div class="chips" id="tagPicker"></div>
               </div>
             </div>
             <div class="row">
               <div class="field">
-                <label for="entryMinutes">Время</label>
+                <label for="entryMinutes">Час</label>
                 <div class="time-pick">
-                  <button type="button" data-min="15">15м</button>
-                  <button type="button" data-min="30">30м</button>
-                  <button type="button" data-min="60">1ч</button>
-                  <button type="button" data-min="120">2ч</button>
-                  <input type="number" id="entryMinutes" min="0" step="5" placeholder="мин">
+                  <button type="button" data-min="15">15 хв</button>
+                  <button type="button" data-min="30">30 хв</button>
+                  <button type="button" data-min="60">1 год</button>
+                  <button type="button" data-min="120">2 год</button>
+                  <input type="number" id="entryMinutes" min="0" step="5" placeholder="хв">
                 </div>
               </div>
-              <label class="star-toggle" title="Отметить как победу дня">
-                <input type="checkbox" id="entryStar"><span>⭐ Победа</span>
+              <label class="star-toggle" title="Позначити як перемогу дня">
+                <input type="checkbox" id="entryStar"><span>⭐ Перемога</span>
               </label>
             </div>
             <div class="form-foot">
-              <span class="hint">Ctrl + Enter — сохранить</span>
-              <button class="btn primary" type="submit">Добавить</button>
+              <span class="hint">Ctrl + Enter — зберегти</span>
+              <button class="btn primary" type="submit">Додати</button>
             </div>
           </form>
         </div>
 
         <div class="card">
           <div class="card-head">
-            <h2>Как прошёл день</h2>
+            <h2>Як минув день</h2>
           </div>
           <div class="mood" id="moodPicker">
-            <button data-mood="1" title="Ужасно">😫</button>
-            <button data-mood="2" title="Так себе">😕</button>
+            <button data-mood="1" title="Жахливо">😫</button>
+            <button data-mood="2" title="Так собі">😕</button>
             <button data-mood="3" title="Нормально">😐</button>
-            <button data-mood="4" title="Хорошо">🙂</button>
-            <button data-mood="5" title="Огонь">🤩</button>
+            <button data-mood="4" title="Добре">🙂</button>
+            <button data-mood="5" title="Вогонь">🤩</button>
           </div>
-          <label class="sub-label" for="dayNote">Заметка к дню</label>
-          <textarea id="dayNote" rows="3" placeholder="Мысли, выводы, что улучшить завтра…"></textarea>
+          <label class="sub-label" for="dayNote">Нотатка до дня</label>
+          <textarea id="dayNote" rows="3" placeholder="Думки, висновки, що покращити завтра…"></textarea>
           <p class="hint saved-hint" id="noteSaved"></p>
         </div>
       </div>
 
       <div class="card">
         <div class="card-head">
-          <h2 id="dayListTitle">Сделано сегодня</h2>
+          <h2 id="dayListTitle">Зроблено сьогодні</h2>
           <span class="pill" id="dayTotal"></span>
         </div>
         <ul class="entries" id="dayEntries"></ul>
@@ -113,78 +113,78 @@
 
       <div class="card">
         <div class="card-head">
-          <h2>Активность за год</h2>
+          <h2>Активність за рік</h2>
           <span class="hint" id="heatmapCaption"></span>
         </div>
         <div class="heatmap-wrap"><div id="heatmap" class="heatmap"></div></div>
-        <div class="legend"><span>меньше</span><i class="l0"></i><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i><span>больше</span></div>
+        <div class="legend"><span>менше</span><i class="l0"></i><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i><span>більше</span></div>
       </div>
     </section>
 
     <!-- ============ HISTORY ============ -->
     <section class="view" id="view-history">
-      <div class="hero compact"><h1>История</h1></div>
+      <div class="hero compact"><h1>Історія</h1></div>
       <div class="card toolbar">
-        <input type="search" id="search" placeholder="🔍 Поиск по записям…">
-        <select id="filterTag"><option value="">Все категории</option></select>
-        <label class="star-toggle small"><input type="checkbox" id="filterStar"><span>⭐ Только победы</span></label>
+        <input type="search" id="search" placeholder="🔍 Пошук по записах…">
+        <select id="filterTag"><option value="">Усі категорії</option></select>
+        <label class="star-toggle small"><input type="checkbox" id="filterStar"><span>⭐ Лише перемоги</span></label>
       </div>
       <div id="historyList"></div>
-      <button class="btn ghost wide" id="loadMore">Показать ещё</button>
+      <button class="btn ghost wide" id="loadMore">Показати ще</button>
     </section>
 
     <!-- ============ MONEY ============ -->
     <section class="view" id="view-money">
       <div class="hero compact report-hero">
-        <h1>Деньги</h1>
+        <h1>Гроші</h1>
         <div class="nav-period">
-          <button class="icon-btn" id="moneyPrev" aria-label="Прошлый месяц">‹</button>
+          <button class="icon-btn" id="moneyPrev" aria-label="Минулий місяць">‹</button>
           <span id="moneyMonth"></span>
-          <button class="icon-btn" id="moneyNext" aria-label="Следующий месяц">›</button>
+          <button class="icon-btn" id="moneyNext" aria-label="Наступний місяць">›</button>
         </div>
       </div>
 
       <div class="kpis money-kpis">
-        <div class="kpi income"><div class="label">Заработал</div><div class="value" id="mIncome">0</div><span class="delta flat" id="mIncomeD"></span></div>
-        <div class="kpi expense"><div class="label">Потратил</div><div class="value" id="mExpense">0</div><span class="delta flat" id="mExpenseD"></span></div>
-        <div class="kpi"><div class="label">Остаток</div><div class="value" id="mBalance">0</div><span class="delta flat" id="mBalanceD"></span></div>
-        <div class="kpi"><div class="label">В среднем в день</div><div class="value" id="mDaily">0</div><span class="delta flat">тратишь</span></div>
+        <div class="kpi income"><div class="label">Заробив</div><div class="value" id="mIncome">0</div><span class="delta flat" id="mIncomeD"></span></div>
+        <div class="kpi expense"><div class="label">Витратив</div><div class="value" id="mExpense">0</div><span class="delta flat" id="mExpenseD"></span></div>
+        <div class="kpi"><div class="label">Залишок</div><div class="value" id="mBalance">0</div><span class="delta flat" id="mBalanceD"></span></div>
+        <div class="kpi"><div class="label">У середньому на день</div><div class="value" id="mDaily">0</div><span class="delta flat">витрачаєш</span></div>
       </div>
 
       <div class="grid-2">
         <div class="card">
           <div class="card-head">
             <div class="seg" id="moneyType">
-              <button data-type="expense" class="active">− Расход</button>
-              <button data-type="income">+ Доход</button>
+              <button data-type="expense" class="active">− Витрата</button>
+              <button data-type="income">+ Дохід</button>
             </div>
             <input type="date" id="moneyDate" class="date-input">
           </div>
           <form id="moneyForm" autocomplete="off">
             <div class="amount-wrap">
               <input type="number" id="moneyAmount" min="0" step="0.01" inputmode="decimal" placeholder="0" required>
-              <span class="cur" id="moneyCur">₽</span>
+              <span class="cur" id="moneyCur">₴</span>
             </div>
             <div class="field" style="margin-top:14px">
-              <label>Категория</label>
+              <label>Категорія</label>
               <div class="chips" id="moneyCats"></div>
             </div>
-            <input id="moneyNote" placeholder="Комментарий (необязательно)" maxlength="120" style="margin-top:14px">
+            <input id="moneyNote" placeholder="Коментар (необов'язково)" maxlength="120" style="margin-top:14px">
             <div class="form-foot">
-              <span class="hint">Enter — сохранить</span>
-              <button class="btn primary" type="submit" id="moneySubmit">Добавить расход</button>
+              <span class="hint">Enter — зберегти</span>
+              <button class="btn primary" type="submit" id="moneySubmit">Додати витрату</button>
             </div>
           </form>
         </div>
 
         <div class="card">
-          <div class="card-head"><h2>Куда ушли деньги</h2></div>
+          <div class="card-head"><h2>Куди пішли гроші</h2></div>
           <div id="moneyCatBars"></div>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-head"><h2>Операции за месяц</h2><span class="pill" id="moneyCount"></span></div>
+        <div class="card-head"><h2>Операції за місяць</h2><span class="pill" id="moneyCount"></span></div>
         <div id="moneyList"></div>
       </div>
     </section>
@@ -192,25 +192,25 @@
     <!-- ============ REPORTS ============ -->
     <section class="view" id="view-reports">
       <div class="hero compact report-hero">
-        <h1>Отчёт</h1>
+        <h1>Звіт</h1>
         <div class="report-controls">
           <div class="seg" id="periodSeg">
-            <button data-period="week" class="active">Неделя</button>
-            <button data-period="month">Месяц</button>
+            <button data-period="week" class="active">Тиждень</button>
+            <button data-period="month">Місяць</button>
           </div>
           <div class="nav-period">
             <button class="icon-btn" id="prevPeriod" aria-label="Назад">‹</button>
             <span id="periodLabel"></span>
-            <button class="icon-btn" id="nextPeriod" aria-label="Вперёд">›</button>
+            <button class="icon-btn" id="nextPeriod" aria-label="Вперед">›</button>
           </div>
         </div>
       </div>
 
       <div class="report-actions">
-        <button class="btn primary big" id="getReport">📊 Получить отчёт</button>
-        <button class="btn ghost" id="copyReport">Скопировать</button>
-        <button class="btn ghost" id="downloadReport">Скачать .md</button>
-        <button class="btn ghost" id="printReport">PDF / Печать</button>
+        <button class="btn primary big" id="getReport">📊 Отримати звіт</button>
+        <button class="btn ghost" id="copyReport">Скопіювати</button>
+        <button class="btn ghost" id="downloadReport">Завантажити .md</button>
+        <button class="btn ghost" id="printReport">PDF / Друк</button>
       </div>
 
       <div id="report" class="report"></div>
@@ -218,56 +218,55 @@
 
     <!-- ============ SETTINGS ============ -->
     <section class="view" id="view-settings">
-      <div class="hero compact"><h1>Настройки</h1></div>
+      <div class="hero compact"><h1>Налаштування</h1></div>
 
       <div class="card">
-        <h2>☁️ Облако и вход</h2>
-        <p class="muted">Подключи бесплатную базу Supabase — записи будут доступны с телефона и компьютера и никогда не потеряются.</p>
+        <h2>☁️ Хмара і вхід</h2>
+        <p class="muted">Підключи безкоштовну базу Supabase — записи будуть доступні з телефона й комп'ютера і ніколи не загубляться.</p>
         <div id="cloudBox"></div>
       </div>
 
       <div class="card">
-        <h2>🏷 Категории</h2>
+        <h2>🏷 Категорії</h2>
         <div class="chips editable" id="tagEditor"></div>
         <form id="tagForm" class="row">
-          <input id="newTagName" placeholder="Новая категория" maxlength="24">
+          <input id="newTagName" placeholder="Нова категорія" maxlength="24">
           <input id="newTagEmoji" placeholder="😀" maxlength="4" class="emoji-input">
-          <button class="btn" type="submit">Добавить</button>
+          <button class="btn" type="submit">Додати</button>
         </form>
       </div>
 
       <div class="card">
         <h2>🔔 Автоматика</h2>
-        <label class="switch"><input type="checkbox" id="optAutoReport"><span>Показывать отчёт автоматически в понедельник и 1-го числа</span></label>
-        <label class="switch"><input type="checkbox" id="optReminder"><span>Напоминание вечером, если день не заполнен</span></label>
-        <div class="row"><label for="reminderTime">Время напоминания</label><input type="time" id="reminderTime" value="21:00"></div>
-        <label class="switch"><input type="checkbox" id="optTheme"><span>Светлая тема</span></label>
+        <label class="switch"><input type="checkbox" id="optAutoReport"><span>Показувати звіт автоматично в понеділок і 1-го числа</span></label>
+        <label class="switch"><input type="checkbox" id="optReminder"><span>Нагадування ввечері, якщо день не заповнено</span></label>
+        <div class="row"><label for="reminderTime">Час нагадування</label><input type="time" id="reminderTime" value="21:00"></div>
+        <label class="switch"><input type="checkbox" id="optTheme"><span>Світла тема</span></label>
         <div class="row"><label for="optCurrency">Валюта</label>
           <select id="optCurrency" style="width:auto">
-            <option value="₽">₽ рубль</option><option value="₴">₴ гривна</option><option value="$">$ доллар</option>
-            <option value="€">€ евро</option><option value="₸">₸ тенге</option><option value="Br">Br бел. рубль</option>
-            <option value="zł">zł злотый</option>
+            <option value="₴">₴ гривня</option><option value="$">$ долар</option><option value="€">€ євро</option>
+            <option value="zł">zł злотий</option><option value="₽">₽ рубль</option>
           </select>
         </div>
       </div>
 
       <div class="card">
-        <h2>💾 Данные</h2>
+        <h2>💾 Дані</h2>
         <div class="row wrap">
-          <button class="btn" id="exportJson">Экспорт JSON</button>
-          <label class="btn">Импорт JSON<input type="file" id="importJson" accept="application/json" hidden></label>
-          <button class="btn" id="demoData">Заполнить демо-данными</button>
-          <button class="btn danger" id="wipeData">Удалить всё</button>
+          <button class="btn" id="exportJson">Експорт JSON</button>
+          <label class="btn">Імпорт JSON<input type="file" id="importJson" accept="application/json" hidden></label>
+          <button class="btn" id="demoData">Заповнити демо-даними</button>
+          <button class="btn danger" id="wipeData">Видалити все</button>
         </div>
       </div>
     </section>
   </main>
 
-  <footer class="foot">Хроника · сделано с ❤️ · <kbd>N</kbd> новая запись · <kbd>M</kbd> деньги · <kbd>R</kbd> отчёт</footer>
+  <footer class="foot">Хроніка · зроблено з ❤️ · <kbd>N</kbd> новий запис · <kbd>M</kbd> гроші · <kbd>R</kbd> звіт</footer>
 
   <div id="toast" class="toast"></div>
 
-  <script src="config.js?v=4"></script>
-  <script type="module" src="app.js?v=4"></script>
+  <script src="config.js?v=5"></script>
+  <script type="module" src="app.js?v=5"></script>
 </body>
 </html>

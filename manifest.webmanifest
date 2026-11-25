@@ -1,6 +1,6 @@
 {
-  "name": "Хроника — дневник продуктивности",
-  "short_name": "Хроника",
+  "name": "Хроніка — щоденник продуктивності",
+  "short_name": "Хроніка",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#0d0f14",
