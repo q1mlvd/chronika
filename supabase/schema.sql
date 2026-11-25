@@ -31,3 +31,8 @@ create policy "own entries" on public.entries for all
 drop policy if exists "own days" on public.days;
 create policy "own days" on public.days for all
   using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- Доступ к таблицам через API только для вошедших пользователей
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on public.entries, public.days to authenticated;
+revoke all on public.entries, public.days from anon;
