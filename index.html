@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Хроника — дневник продуктивности</title>
+  <meta name="description" content="Личный дневник дел с автоматическими отчётами за неделю и месяц.">
+  <meta name="theme-color" content="#0d0f14">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="bg-glow" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <img src="icon.svg" alt="" width="30" height="30">
+      <span>Хроника</span>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-view="today" role="tab">Сегодня</button>
+      <button class="tab" data-view="history" role="tab">История</button>
+      <button class="tab" data-view="reports" role="tab">Отчёты</button>
+      <button class="tab" data-view="settings" role="tab" aria-label="Настройки">⚙</button>
+    </nav>
+    <div class="sync" id="syncBadge" title="Где хранятся данные">
+      <span class="dot"></span><span class="label">Локально</span>
+    </div>
+  </header>
+
+  <div id="banner" class="banner hidden"></div>
+
+  <main>
+    <!-- ============ TODAY ============ -->
+    <section class="view active" id="view-today">
+      <div class="hero">
+        <div>
+          <p class="eyebrow" id="todayLabel"></p>
+          <h1 id="greeting">Что сделал сегодня?</h1>
+        </div>
+        <div class="kpis-mini">
+          <div class="kpi-mini"><span class="num" id="streakNum">0</span><span class="cap">🔥 дней подряд</span></div>
+          <div class="kpi-mini"><span class="num" id="weekNum">0</span><span class="cap">дел за неделю</span></div>
+          <div class="kpi-mini"><span class="num" id="weekHours">0ч</span><span class="cap">часов за неделю</span></div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head">
+            <h2>Новая запись</h2>
+            <input type="date" id="entryDate" class="date-input">
+          </div>
+          <form id="entryForm" autocomplete="off">
+            <textarea id="entryText" rows="3" placeholder="Например: дописал лендинг, сходил в зал, прочитал 30 страниц…" required></textarea>
+            <div class="row">
+              <div class="field grow">
+                <label>Категория</label>
+                <div class="chips" id="tagPicker"></div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="field">
+                <label for="entryMinutes">Время</label>
+                <div class="time-pick">
+                  <button type="button" data-min="15">15м</button>
+                  <button type="button" data-min="30">30м</button>
+                  <button type="button" data-min="60">1ч</button>
+                  <button type="button" data-min="120">2ч</button>
+                  <input type="number" id="entryMinutes" min="0" step="5" placeholder="мин">
+                </div>
+              </div>
+              <label class="star-toggle" title="Отметить как победу дня">
+                <input type="checkbox" id="entryStar"><span>⭐ Победа</span>
+              </label>
+            </div>
+            <div class="form-foot">
+              <span class="hint">Ctrl + Enter — сохранить</span>
+              <button class="btn primary" type="submit">Добавить</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>Как прошёл день</h2>
+          </div>
+          <div class="mood" id="moodPicker">
+            <button data-mood="1" title="Ужасно">😫</button>
+            <button data-mood="2" title="Так себе">😕</button>
+            <button data-mood="3" title="Нормально">😐</button>
+            <button data-mood="4" title="Хорошо">🙂</button>
+            <button data-mood="5" title="Огонь">🤩</button>
+          </div>
+          <label class="sub-label" for="dayNote">Заметка к дню</label>
+          <textarea id="dayNote" rows="3" placeholder="Мысли, выводы, что улучшить завтра…"></textarea>
+          <p class="hint saved-hint" id="noteSaved"></p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2 id="dayListTitle">Сделано сегодня</h2>
+          <span class="pill" id="dayTotal"></span>
+        </div>
+        <ul class="entries" id="dayEntries"></ul>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Активность за год</h2>
+          <span class="hint" id="heatmapCaption"></span>
+        </div>
+        <div class="heatmap-wrap"><div id="heatmap" class="heatmap"></div></div>
+        <div class="legend"><span>меньше</span><i class="l0"></i><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i><span>больше</span></div>
+      </div>
+    </section>
+
+    <!-- ============ HISTORY ============ -->
+    <section class="view" id="view-history">
+      <div class="hero compact"><h1>История</h1></div>
+      <div class="card toolbar">
+        <input type="search" id="search" placeholder="🔍 Поиск по записям…">
+        <select id="filterTag"><option value="">Все категории</option></select>
+        <label class="star-toggle small"><input type="checkbox" id="filterStar"><span>⭐ Только победы</span></label>
+      </div>
+      <div id="historyList"></div>
+      <button class="btn ghost wide" id="loadMore">Показать ещё</button>
+    </section>
+
+    <!-- ============ REPORTS ============ -->
+    <section class="view" id="view-reports">
+      <div class="hero compact report-hero">
+        <h1>Отчёт</h1>
+        <div class="report-controls">
+          <div class="seg" id="periodSeg">
+            <button data-period="week" class="active">Неделя</button>
+            <button data-period="month">Месяц</button>
+          </div>
+          <div class="nav-period">
+            <button class="icon-btn" id="prevPeriod" aria-label="Назад">‹</button>
+            <span id="periodLabel"></span>
+            <button class="icon-btn" id="nextPeriod" aria-label="Вперёд">›</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="report-actions">
+        <button class="btn primary big" id="getReport">📊 Получить отчёт</button>
+        <button class="btn ghost" id="copyReport">Скопировать</button>
+        <button class="btn ghost" id="downloadReport">Скачать .md</button>
+        <button class="btn ghost" id="printReport">PDF / Печать</button>
+      </div>
+
+      <div id="report" class="report"></div>
+    </section>
+
+    <!-- ============ SETTINGS ============ -->
+    <section class="view" id="view-settings">
+      <div class="hero compact"><h1>Настройки</h1></div>
+
+      <div class="card">
+        <h2>☁️ Облако и вход</h2>
+        <p class="muted">Подключи бесплатную базу Supabase — записи будут доступны с телефона и компьютера и никогда не потеряются.</p>
+        <div id="cloudBox"></div>
+      </div>
+
+      <div class="card">
+        <h2>🏷 Категории</h2>
+        <div class="chips editable" id="tagEditor"></div>
+        <form id="tagForm" class="row">
+          <input id="newTagName" placeholder="Новая категория" maxlength="24">
+          <input id="newTagEmoji" placeholder="😀" maxlength="4" class="emoji-input">
+          <button class="btn" type="submit">Добавить</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>🔔 Автоматика</h2>
+        <label class="switch"><input type="checkbox" id="optAutoReport"><span>Показывать отчёт автоматически в понедельник и 1-го числа</span></label>
+        <label class="switch"><input type="checkbox" id="optReminder"><span>Напоминание вечером, если день не заполнен</span></label>
+        <div class="row"><label for="reminderTime">Время напоминания</label><input type="time" id="reminderTime" value="21:00"></div>
+        <label class="switch"><input type="checkbox" id="optTheme"><span>Светлая тема</span></label>
+      </div>
+
+      <div class="card">
+        <h2>💾 Данные</h2>
+        <div class="row wrap">
+          <button class="btn" id="exportJson">Экспорт JSON</button>
+          <label class="btn">Импорт JSON<input type="file" id="importJson" accept="application/json" hidden></label>
+          <button class="btn" id="demoData">Заполнить демо-данными</button>
+          <button class="btn danger" id="wipeData">Удалить всё</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">Хроника · сделано с ❤️ · <kbd>N</kbd> новая запись · <kbd>R</kbd> отчёт</footer>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="config.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
