@@ -45,10 +45,11 @@ const prefs = Object.assign({
   supabaseKey: '',
   lastSeenReport: '',
   lastReminder: '',
-}, JSON.parse(localStorage.getItem(LS_PREFS) || '{}'));
+  currency: '₽',
+},JSON.parse(localStorage.getItem(LS_PREFS) || '{}'));
 const savePrefs = () => localStorage.setItem(LS_PREFS, JSON.stringify(prefs));
 
-let data = Object.assign({ entries: [], days: {} }, JSON.parse(localStorage.getItem(LS_DATA) || '{}'));
+let data = Object.assign({ entries: [], days: {}, money: [] },JSON.parse(localStorage.getItem(LS_DATA) || '{}'));
 const saveLocal = () => localStorage.setItem(LS_DATA, JSON.stringify(data));
 
 const ui = {
@@ -112,6 +113,14 @@ async function pullCloud() {
   // локальные несинхронизированные дни тоже сохраняем
   Object.entries(data.days).forEach(([k, v]) => { if (!v.synced && !days[k]) days[k] = v; });
   data.days = days;
+  // деньги: отдельная таблица (если её ещё нет в базе — работаем локально)
+  const m = await cloud.client.from('money').select('*').order('created_at');
+  const moneyLocal = data.money.filter((x) => !x.synced);
+  if (!m.error) {
+    data.money = m.data.map((r) => ({ id: r.id, date: r.date, type: r.type, amount: Number(r.amount), category: r.category, note: r.note || '', created_at: r.created_at, synced: true }));
+    data.money.push(...moneyLocal);
+    for (const x of moneyLocal) pushMoney(x);
+  } else console.warn('money table:', m.error.message);
   saveLocal();
   renderAll();
   if (localOnly.length) {
@@ -122,6 +131,18 @@ async function pullCloud() {
     for (const [k, v] of Object.entries(data.days)) if (!v.synced) await pushDay(k);
     toast('Всё синхронизировано ☁️');
   }
+}
+
+async function pushMoney(tx) {
+  if (!online()) return;
+  const { error } = await cloud.client.from('money').upsert({ id: tx.id, user_id: cloud.user.id, date: tx.date, type: tx.type, amount: tx.amount, category: tx.category, note: tx.note || '', created_at: tx.created_at });
+  if (error) { toast('Облако: ' + error.message); return; }
+  tx.synced = true; saveLocal();
+}
+async function removeMoneyCloud(id) {
+  if (!online()) return;
+  const { error } = await cloud.client.from('money').delete().eq('id', id);
+  if (error) toast('Облако: ' + error.message);
 }
 
 async function pushEntry(entry) {
@@ -237,6 +258,7 @@ function show(view) {
   $$('.view').forEach((v) => v.classList.toggle('active', v.id === 'view-' + view));
   if (view === 'history') renderHistory();
   if (view === 'reports') renderPeriodLabel();
+  if (view === 'money') renderMoney();
   window.scrollTo({ top: 0, behavior: 'smooth' });
   history.replaceState(null, '', '#' + view);
 }
@@ -449,6 +471,119 @@ $('#filterTag').addEventListener('change', renderHistory);
 $('#filterStar').addEventListener('change', renderHistory);
 $('#loadMore').addEventListener('click', () => { ui.historyLimit += 20; renderHistory(); });
 
+// ---------------------------------------------------------------- MONEY
+const MONEY_CATS = {
+  expense: [['Еда', '🛒'], ['Кафе', '☕'], ['Транспорт', '🚕'], ['Жильё', '🏠'], ['Подписки', '📱'], ['Покупки', '🛍'], ['Развлечения', '🎉'], ['Здоровье', '💊'], ['Учёба', '📚'], ['Другое', '📦']],
+  income: [['Зарплата', '💼'], ['Подработка', '💻'], ['Подарок', '🎁'], ['Продажа', '🏷'], ['Другое', '💰']],
+};
+const moneyEmoji = (type, cat) => (MONEY_CATS[type].find((c) => c[0] === cat) || [])[1] || (type === 'income' ? '💰' : '📦');
+const fmtMoney = (n, sign = '') => sign + new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(Math.round(n * 100) / 100) + ' ' + prefs.currency;
+const moneyBetween = (from, to) => data.money.filter((x) => x.date >= from && x.date <= to);
+function moneyStats(from, to) {
+  const list = moneyBetween(from, to);
+  const income = list.filter((x) => x.type === 'income').reduce((a, x) => a + x.amount, 0);
+  const expense = list.filter((x) => x.type === 'expense').reduce((a, x) => a + x.amount, 0);
+  return { list, income, expense, balance: income - expense };
+}
+function moneyCatTotals(list, type) {
+  const m = {};
+  list.filter((x) => x.type === type).forEach((x) => { m[x.category || 'Другое'] = (m[x.category || 'Другое'] || 0) + x.amount; });
+  const total = Object.values(m).reduce((a, b) => a + b, 0) || 1;
+  return Object.entries(m).map(([name, v]) => ({ name, v, share: v / total })).sort((a, b) => b.v - a.v);
+}
+function catBarsHtml(totals, type) {
+  if (!totals.length) return `<p class="hint">${type === 'expense' ? 'Трат пока нет' : 'Доходов пока нет'}</p>`;
+  const max = totals[0].v;
+  return `<div class="tagbars">${totals.map((t) => `<div class="tagbar"><span>${moneyEmoji(type, t.name)} ${esc(t.name)}</span><div class="track"><div class="fill ${type}" style="width:${Math.max(3, (t.v / max) * 100)}%"></div></div><span class="v">${fmtMoney(t.v)}</span></div>`).join('')}</div>`;
+}
+
+Object.assign(ui, { moneyType: 'expense', moneyCat: null, moneyMonth: startOfMonth(new Date()), moneyDate: todayIso() });
+
+function setDelta(id, html) { $(id).innerHTML = html; }
+
+function renderMoney() {
+  const s = ui.moneyMonth;
+  const e = new Date(s.getFullYear(), s.getMonth() + 1, 0);
+  const ps = new Date(s.getFullYear(), s.getMonth() - 1, 1);
+  const pe = new Date(s.getFullYear(), s.getMonth(), 0);
+  const isCur = iso(s) === iso(startOfMonth(new Date()));
+  $('#moneyMonth').textContent = cap(fmt(s, { month: 'long', year: 'numeric' }).replace(' г.', ''));
+  $('#moneyNext').disabled = isCur;
+  $('#moneyNext').style.opacity = isCur ? 0.35 : 1;
+
+  const st = moneyStats(iso(s), iso(e));
+  const pv = moneyStats(iso(ps), iso(pe));
+  $('#mIncome').textContent = fmtMoney(st.income);
+  $('#mExpense').textContent = fmtMoney(st.expense);
+  $('#mBalance').textContent = fmtMoney(st.balance, st.balance > 0 ? '+' : '');
+  $('#mBalance').style.color = st.balance < 0 ? 'var(--danger)' : '';
+  setDelta('#mIncomeD', delta(st.income, pv.income));
+  setDelta('#mExpenseD', delta(st.expense, pv.expense, '', true));
+  setDelta('#mBalanceD', st.income > 0 ? (st.balance >= 0 ? `сохранил ${Math.round((st.balance / st.income) * 100)}% дохода` : 'тратишь больше, чем зарабатываешь') : '');
+  const daysPassed = isCur ? new Date().getDate() : e.getDate();
+  $('#mDaily').textContent = fmtMoney(Math.round(st.expense / daysPassed));
+
+  $('#view-money').classList.toggle('is-income', ui.moneyType === 'income');
+  $$('#moneyType button').forEach((b) => b.classList.toggle('active', b.dataset.type === ui.moneyType));
+  $('#moneySubmit').textContent = ui.moneyType === 'income' ? 'Добавить доход' : 'Добавить расход';
+  $('#moneyCur').textContent = prefs.currency;
+  $('#moneyDate').value = ui.moneyDate;
+  $('#moneyCats').innerHTML = MONEY_CATS[ui.moneyType].map(([n, em]) => `<button type="button" class="chip ${ui.moneyCat === n ? 'on' : ''}" data-cat="${esc(n)}">${em} ${esc(n)}</button>`).join('');
+
+  $('#moneyCatBars').innerHTML = catBarsHtml(moneyCatTotals(st.list, 'expense'), 'expense');
+
+  $('#moneyCount').textContent = st.list.length ? `${st.list.length} ${plural(st.list.length, 'операция', 'операции', 'операций')}` : '';
+  const byDate = {};
+  st.list.forEach((x) => (byDate[x.date] ||= []).push(x));
+  const dates = Object.keys(byDate).sort().reverse();
+  $('#moneyList').innerHTML = dates.length ? dates.map((d) => {
+    const list = byDate[d].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+    const out = list.filter((x) => x.type === 'expense').reduce((a, x) => a + x.amount, 0);
+    const inc = list.filter((x) => x.type === 'income').reduce((a, x) => a + x.amount, 0);
+    return `<div class="tx-day"><div class="tx-day-head"><span>${cap(fmt(parse(d), { weekday: 'long', day: 'numeric', month: 'long' }))}</span><span>${inc ? `<span style="color:var(--accent-2)">+${fmtMoney(inc)}</span> ` : ''}${out ? `−${fmtMoney(out)}` : ''}</span></div>
+      ${list.map((x) => `<div class="tx" data-id="${x.id}"><span class="emo">${moneyEmoji(x.type, x.category)}</span><div class="body"><div class="cat">${esc(x.category || 'Без категории')}</div>${x.note ? `<div class="note">${esc(x.note)}</div>` : ''}</div><span class="amt ${x.type === 'income' ? 'plus' : 'minus'}">${x.type === 'income' ? '+' : '−'}${fmtMoney(x.amount)}</span><button class="del" data-del-tx title="Удалить">🗑</button></div>`).join('')}</div>`;
+  }).join('') : `<div class="empty"><span class="big">💸</span>За этот месяц операций нет. Добавь первый доход или расход.</div>`;
+}
+
+$('#moneyType').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-type]');
+  if (!b) return;
+  ui.moneyType = b.dataset.type; ui.moneyCat = null;
+  renderMoney();
+  $('#moneyAmount').focus();
+});
+$('#moneyCats').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-cat]');
+  if (!b) return;
+  ui.moneyCat = ui.moneyCat === b.dataset.cat ? null : b.dataset.cat;
+  $$('#moneyCats .chip').forEach((c) => c.classList.toggle('on', c.dataset.cat === ui.moneyCat));
+});
+$('#moneyDate').addEventListener('change', (e) => { ui.moneyDate = e.target.value || todayIso(); });
+$('#moneyPrev').addEventListener('click', () => { const s = ui.moneyMonth; ui.moneyMonth = new Date(s.getFullYear(), s.getMonth() - 1, 1); renderMoney(); });
+$('#moneyNext').addEventListener('click', () => { if ($('#moneyNext').disabled) return; const s = ui.moneyMonth; ui.moneyMonth = new Date(s.getFullYear(), s.getMonth() + 1, 1); renderMoney(); });
+$('#moneyForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const amount = Math.round(parseFloat(String($('#moneyAmount').value).replace(',', '.')) * 100) / 100;
+  if (!(amount > 0)) { toast('Введи сумму больше нуля'); return; }
+  const tx = { id: uid(), date: ui.moneyDate, type: ui.moneyType, amount, category: ui.moneyCat || 'Другое', note: $('#moneyNote').value.trim(), created_at: new Date().toISOString(), synced: false };
+  data.money.push(tx);
+  saveLocal(); pushMoney(tx);
+  $('#moneyAmount').value = ''; $('#moneyNote').value = '';
+  ui.moneyMonth = startOfMonth(parse(tx.date));
+  renderMoney();
+  if (tx.type === 'income') { confetti(50); toast(`💰 +${fmtMoney(amount)}, красава!`); } else toast(`Записал расход: ${fmtMoney(amount)}`);
+  $('#moneyAmount').focus();
+});
+$('#moneyList').addEventListener('click', (e) => {
+  if (!e.target.closest('[data-del-tx]')) return;
+  const id = e.target.closest('.tx').dataset.id;
+  const idx = data.money.findIndex((x) => x.id === id);
+  if (idx < 0) return;
+  const [removed] = data.money.splice(idx, 1);
+  saveLocal(); removeMoneyCloud(id); renderMoney();
+  toast('Операция удалена', 'Вернуть', () => { removed.synced = false; data.money.push(removed); saveLocal(); pushMoney(removed); renderMoney(); });
+});
+
 // ---------------------------------------------------------------- REPORTS
 function periodRange(period, anchor) {
   if (period === 'week') {
@@ -509,12 +644,50 @@ function stats(start, end) {
   };
 }
 
-function delta(cur, prev, unit = '') {
+// invert: для расходов рост — это плохо (красный), падение — хорошо (зелёный)
+function delta(cur, prev, unit = '', invert = false) {
   if (prev == null || (prev === 0 && cur === 0)) return '<span class="delta flat">— без изменений</span>';
-  if (prev === 0) return '<span class="delta up">▲ новое</span>';
+  if (prev === 0) return `<span class="delta ${invert ? 'down' : 'up'}">▲ новое</span>`;
   const p = Math.round(((cur - prev) / prev) * 100);
   if (p === 0) return '<span class="delta flat">= как в прошлый раз</span>';
-  return `<span class="delta ${p > 0 ? 'up' : 'down'}">${p > 0 ? '▲' : '▼'} ${Math.abs(p)}% ${unit}</span>`;
+  const good = invert ? p < 0 : p > 0;
+  return `<span class="delta ${good ? 'up' : 'down'}">${p > 0 ? '▲' : '▼'} ${Math.abs(p)}% ${unit}</span>`;
+}
+
+function moneyReportHtml(ms, mp) {
+  if (!ms.list.length && !mp.list.length) return '';
+  const exp = moneyCatTotals(ms.list, 'expense');
+  const inc = moneyCatTotals(ms.list, 'income');
+  const big = ms.list.filter((x) => x.type === 'expense').sort((a, b) => b.amount - a.amount).slice(0, 5);
+  const total = ms.income + ms.expense || 1;
+  return `<div class="card"><div class="card-head"><h2>💰 Деньги</h2><span class="pill">${ms.list.length} ${plural(ms.list.length, 'операция', 'операции', 'операций')}</span></div>
+    <div class="kpis">
+      <div class="kpi"><div class="label">Заработал</div><div class="value" style="color:var(--accent-2)">${fmtMoney(ms.income)}</div>${delta(ms.income, mp.income)}</div>
+      <div class="kpi"><div class="label">Потратил</div><div class="value" style="color:var(--danger)">${fmtMoney(ms.expense)}</div>${delta(ms.expense, mp.expense, '', true)}</div>
+      <div class="kpi"><div class="label">Остаток</div><div class="value" ${ms.balance < 0 ? 'style="color:var(--danger)"' : ''}>${fmtMoney(ms.balance, ms.balance > 0 ? '+' : '')}</div><span class="delta flat">было ${fmtMoney(mp.balance, mp.balance > 0 ? '+' : '')}</span></div>
+    </div>
+    <div class="balance-bar"><div class="in" style="width:${(ms.income / total) * 100}%"></div><div class="out" style="width:${(ms.expense / total) * 100}%"></div></div>
+    <div class="money-split">
+      <div><h2 style="font-size:15px">Расходы по категориям</h2>${catBarsHtml(exp, 'expense')}</div>
+      <div><h2 style="font-size:15px">Доходы</h2>${catBarsHtml(inc, 'income')}
+        ${big.length ? `<h2 style="font-size:15px;margin-top:18px">Самые крупные траты</h2><ul class="wins">${big.map((x) => `<li style="border-color:var(--danger);background:linear-gradient(90deg,rgba(255,92,122,.1),transparent)">${moneyEmoji('expense', x.category)} ${fmtMoney(x.amount)} · ${esc(x.category)}${x.note ? ` · ${esc(x.note)}` : ''} <span class="hint">· ${fmt(parse(x.date), { day: 'numeric', month: 'short' })}</span></li>`).join('')}</ul>` : ''}
+      </div>
+    </div></div>`;
+}
+
+function moneyInsights(ms, mp, period) {
+  const out = [];
+  if (!ms.list.length) return out;
+  const prevWord = period === 'week' ? 'прошлой неделей' : 'прошлым месяцем';
+  const exp = moneyCatTotals(ms.list, 'expense');
+  if (exp[0]) out.push(`💸 Больше всего денег ушло на <b>${esc(exp[0].name)}</b>: ${fmtMoney(exp[0].v)} (${Math.round(exp[0].share * 100)}% трат).`);
+  if (ms.income) out.push(ms.balance >= 0 ? `🏦 В плюсе на <b>${fmtMoney(ms.balance)}</b>: отложил ${Math.round((ms.balance / ms.income) * 100)}% заработка.` : `⚠️ Траты больше доходов на <b>${fmtMoney(-ms.balance)}</b>. Глянь крупные покупки.`);
+  if (mp.expense && ms.expense) {
+    const p = Math.round(((ms.expense - mp.expense) / mp.expense) * 100);
+    const when = period === 'week' ? 'на прошлой неделе' : 'в прошлом месяце';
+    if (Math.abs(p) >= 5) out.push(p < 0 ? `📉 Потратил на ${-p}% меньше, чем ${when}. Экономия работает!` : `📈 Траты выросли на ${p}% по сравнению с ${prevWord}.`);
+  }
+  return out;
 }
 
 function barChart(start, end) {
@@ -594,7 +767,11 @@ function buildReport(celebrate) {
   const chart = barChart(range.start, range.end);
   const tags = tagTotals(st.list);
   const title = periodTitle(ui.period, range);
+  const ms = moneyStats(iso(range.start), iso(range.end));
+  const mp = moneyStats(iso(prevRange.start), iso(prevRange.end));
   const ins = insights(st, pv, chart.days, ui.period);
+  if (!st.list.length && ms.list.length) ins.length = 0;
+  ins.push(...moneyInsights(ms, mp, ui.period));
 
   const daysHtml = chart.days.filter((x) => iso(x.d) <= todayIso()).map((x) => {
     const list = entriesOn(x.k);
@@ -621,16 +798,17 @@ function buildReport(celebrate) {
       <div class="card"><h2>🏷 По категориям</h2>${tags.length ? `<div class="tagbars">${tags.map((t) => `<div class="tagbar"><span>${esc(t.name === 'Без категории' ? '✅' : tagEmoji(t.name))} ${esc(t.name)}</span><div class="track"><div class="fill" style="width:${Math.max(3, (t.v / tags[0].v) * 100)}%"></div></div><span class="v">${t.byMin ? fmtHours(t.v) : t.v}</span></div>`).join('')}</div>` : '<p class="hint">Нет данных</p>'}</div>
     </div>
     ${st.wins.length ? `<div class="card"><h2>⭐ Победы периода</h2><ul class="wins">${st.wins.map((w) => `<li>${esc(w.text)} <span class="hint">· ${fmt(parse(w.date), { day: 'numeric', month: 'short' })}</span></li>`).join('')}</ul></div>` : ''}
+    ${moneyReportHtml(ms, mp)}
     <div class="card report-days"><h2>📅 По дням</h2>${daysHtml || '<p class="hint">Период ещё не начался</p>'}</div>`;
 
-  ui.lastReport = { key: reportKey(), md: toMarkdown(title, st, pv, tags, ins, chart.days) };
+  ui.lastReport = { key: reportKey(), md: toMarkdown(title, st, pv, tags, ins, chart.days, ms, mp) };
   if (celebrate) {
     if (st.list.length) confetti(st.active / st.totalDays >= 0.7 ? 140 : 60);
     $('#report').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 }
 
-function toMarkdown(title, st, pv, tags, ins, days) {
+function toMarkdown(title, st, pv, tags, ins, days, ms, mp) {
   const strip = (s) => s.replace(/<[^>]+>/g, '');
   let md = `# Отчёт: ${ui.period === 'week' ? 'неделя' : 'месяц'} ${title}\n\n`;
   md += `**Итог:** ${strip(grade(st))}\n\n`;
@@ -640,6 +818,12 @@ function toMarkdown(title, st, pv, tags, ins, days) {
   md += `## Выводы\n${ins.map((x) => '- ' + strip(x)).join('\n')}\n\n`;
   if (tags.length) md += `## По категориям\n${tags.map((t) => `- ${t.name}: ${t.byMin ? fmtHours(t.v) : t.v} (${Math.round(t.share * 100)}%)`).join('\n')}\n\n`;
   if (st.wins.length) md += `## Победы\n${st.wins.map((w) => `- ⭐ ${w.text}`).join('\n')}\n\n`;
+  if (ms && (ms.list.length || mp.list.length)) {
+    md += `## Деньги\n| | Сейчас | Прошлый период |\n|---|---|---|\n`;
+    md += `| Заработал | ${fmtMoney(ms.income)} | ${fmtMoney(mp.income)} |\n| Потратил | ${fmtMoney(ms.expense)} | ${fmtMoney(mp.expense)} |\n| Остаток | ${fmtMoney(ms.balance)} | ${fmtMoney(mp.balance)} |\n\n`;
+    const exp = moneyCatTotals(ms.list, 'expense');
+    if (exp.length) md += `**Расходы по категориям:**\n${exp.map((t) => `- ${t.name}: ${fmtMoney(t.v)} (${Math.round(t.share * 100)}%)`).join('\n')}\n\n`;
+  }
   md += `## По дням\n`;
   days.filter((x) => iso(x.d) <= todayIso()).forEach((x) => {
     const list = entriesOn(x.k);
@@ -748,6 +932,7 @@ bindPref('#optReminder', 'reminder', async () => {
 });
 bindPref('#reminderTime', 'reminderTime');
 bindPref('#optTheme', 'light', applyTheme);
+bindPref('#optCurrency', 'currency', () => { renderAll(); renderMoney(); });
 function applyTheme() { document.documentElement.classList.toggle('light', !!prefs.light); }
 
 function renderCloudBox() {
@@ -812,8 +997,11 @@ $('#importJson').addEventListener('change', async (e) => {
     data.entries.push(...fresh);
     Object.assign(data.days, Object.fromEntries(Object.entries(j.days || {}).map(([k, v]) => [k, { ...v, synced: false }])));
     if (j.tags) prefs.tags = j.tags;
+    const mIds = new Set(data.money.map((x) => x.id));
+    const freshMoney = (j.money || []).filter((x) => !mIds.has(x.id)).map((x) => ({ ...x, synced: false }));
+    data.money.push(...freshMoney);
     saveLocal(); savePrefs(); renderAll();
-    fresh.forEach(pushEntry); Object.keys(j.days || {}).forEach(pushDay);
+    fresh.forEach(pushEntry); Object.keys(j.days || {}).forEach(pushDay); freshMoney.forEach(pushMoney);
     toast(`Импортировано записей: ${fresh.length}`);
   } catch { toast('Файл не похож на бэкап Хроники'); }
   e.target.value = '';
@@ -823,8 +1011,9 @@ $('#wipeData').addEventListener('click', async () => {
   if (online()) {
     await cloud.client.from('entries').delete().eq('user_id', cloud.user.id);
     await cloud.client.from('days').delete().eq('user_id', cloud.user.id);
+    await cloud.client.from('money').delete().eq('user_id', cloud.user.id);
   }
-  data = { entries: [], days: {} }; saveLocal(); renderAll(); toast('Всё удалено');
+  data = { entries: [], days: {}, money: [] }; saveLocal(); renderAll(); toast('Всё удалено');
 });
 $('#demoData').addEventListener('click', () => {
   const samples = {
@@ -850,8 +1039,19 @@ $('#demoData').addEventListener('click', () => {
     }
     data.days[d] = { mood: 2 + Math.floor(Math.random() * 4), note: Math.random() < 0.15 ? 'Хороший день, получилось сфокусироваться.' : '', synced: false };
   }
+  // демо-финансы: зарплата 2 раза в месяц, подработки и ежедневные траты
+  const spend = { 'Еда': [150, 900], 'Транспорт': [60, 400], 'Кафе': [300, 1500], 'Подписки': [199, 799], 'Развлечения': [400, 2500], 'Покупки': [500, 5000], 'Здоровье': [300, 2000] };
+  const spendKeys = Object.keys(spend);
+  const tx = (date, type, amount, category, note = '') => data.money.push({ id: uid(), date, type, amount, category, note, created_at: new Date(parse(date).getTime() + 12 * 36e5).toISOString(), synced: false });
+  for (let i = 75; i >= 1; i--) {
+    const dt = addDays(new Date(), -i), d = iso(dt);
+    if (dt.getDate() === 5 || dt.getDate() === 20) tx(d, 'income', 35000, 'Зарплата');
+    if (Math.random() < 0.08) tx(d, 'income', 2000 + Math.round(Math.random() * 8) * 1000, 'Подработка', 'Фриланс-заказ');
+    const k = Math.floor(Math.random() * 3);
+    for (let j = 0; j < k; j++) { const c = spendKeys[Math.floor(Math.random() * spendKeys.length)]; const [a, b] = spend[c]; tx(d, 'expense', Math.round((a + Math.random() * (b - a)) / 10) * 10, c); }
+  }
   saveLocal(); renderAll();
-  if (online()) { data.entries.filter((x) => !x.synced).forEach(pushEntry); Object.keys(data.days).forEach(pushDay); }
+  if (online()) { data.entries.filter((x) => !x.synced).forEach(pushEntry); Object.keys(data.days).forEach(pushDay); data.money.filter((x) => !x.synced).forEach(pushMoney); }
   confetti(80);
   toast(`Добавлено ${n} демо-записей`);
 });
@@ -860,6 +1060,7 @@ $('#demoData').addEventListener('click', () => {
 document.addEventListener('keydown', (e) => {
   if (e.target.matches('input, textarea, select') || e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.key === 'n' || e.key === 'т') { e.preventDefault(); show('today'); setTimeout(() => $('#entryText').focus(), 50); }
+  if (e.key === 'm' || e.key === 'ь') { e.preventDefault(); show('money'); setTimeout(() => $('#moneyAmount').focus(), 50); }
   if (e.key === 'r' || e.key === 'к') { e.preventDefault(); show('reports'); buildReport(true); }
 });
 
@@ -870,6 +1071,7 @@ function renderAll() {
   renderHeatmap();
   renderFilterTags();
   if ($('#view-history').classList.contains('active')) renderHistory();
+  if ($('#view-money').classList.contains('active')) renderMoney();
   if (ui.lastReport && $('#view-reports').classList.contains('active')) buildReport(false);
 }
 
@@ -880,7 +1082,7 @@ renderPeriodLabel();
 renderCloudBox();
 setSync();
 const startView = location.hash.slice(1);
-if (['today', 'history', 'reports', 'settings'].includes(startView)) show(startView);
+if (['today', 'history', 'money', 'reports', 'settings'].includes(startView)) show(startView);
 checkAutoReport();
 setInterval(reminderTick, 60_000);
 reminderTick();

@@ -315,3 +315,33 @@ kbd { font-family: "JetBrains Mono", monospace; font-size: 11px; padding: 1px 6p
   .card, .kpi { box-shadow: none; border-color: #ddd; background: #fff; break-inside: avoid; }
   :root { --muted: #555; --text: #111; --border: #ddd; --h0: #eee; }
 }
+
+/* ---------- money ---------- */
+.money-kpis .kpi.income .value { color: var(--accent-2); }
+.money-kpis .kpi.expense .value { color: var(--danger); }
+.amount-wrap { position: relative; }
+.amount-wrap input { font-size: 34px !important; font-weight: 800; letter-spacing: -0.02em; padding: 14px 56px 14px 16px !important; }
+.amount-wrap .cur { position: absolute; right: 18px; top: 50%; transform: translateY(-50%); font-size: 26px; font-weight: 700; color: var(--muted); }
+#view-money.is-income .amount-wrap input:focus { border-color: var(--accent-2); box-shadow: 0 0 0 3px rgba(46, 230, 166, 0.18); }
+#view-money.is-income #moneyType button.active { background: #17b981; }
+#moneyType button.active[data-type="expense"] { background: var(--danger); }
+.tx-day { margin-bottom: 14px; }
+.tx-day-head { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); font-weight: 600; margin: 0 4px 6px; }
+.tx { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 12px; background: var(--bg-2); border: 1px solid var(--border); margin-bottom: 6px; }
+.tx .emo { font-size: 20px; }
+.tx .body { flex: 1; min-width: 0; }
+.tx .cat { font-weight: 600; }
+.tx .note { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tx .amt { font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tx .amt.plus { color: var(--accent-2); }
+.tx .amt.minus { color: var(--text); }
+.tx .del { border: 0; background: transparent; cursor: pointer; opacity: 0; padding: 4px 6px; border-radius: 8px; }
+.tx:hover .del { opacity: 1; }
+@media (hover: none) { .tx .del { opacity: 0.7; } }
+.fill.expense { background: linear-gradient(90deg, #ff5c7a, #ffb547) !important; }
+.fill.income { background: linear-gradient(90deg, #17b981, #2ee6a6) !important; }
+.money-split { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 820px) { .money-split { grid-template-columns: 1fr; } }
+.balance-bar { display: flex; height: 12px; border-radius: 99px; overflow: hidden; background: var(--h0); margin: 6px 0 14px; }
+.balance-bar .in { background: linear-gradient(90deg, #17b981, #2ee6a6); }
+.balance-bar .out { background: linear-gradient(90deg, #ff5c7a, #ffb547); }

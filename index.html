@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=3">
+  <link rel="stylesheet" href="styles.css?v=4">
 </head>
 <body>
   <div class="bg-glow" aria-hidden="true"></div>
@@ -24,6 +24,7 @@
     <nav class="tabs" role="tablist">
       <button class="tab active" data-view="today" role="tab">Сегодня</button>
       <button class="tab" data-view="history" role="tab">История</button>
+      <button class="tab" data-view="money" role="tab">Деньги</button>
       <button class="tab" data-view="reports" role="tab">Отчёты</button>
       <button class="tab" data-view="settings" role="tab" aria-label="Настройки">⚙</button>
     </nav>
@@ -132,6 +133,62 @@
       <button class="btn ghost wide" id="loadMore">Показать ещё</button>
     </section>
 
+    <!-- ============ MONEY ============ -->
+    <section class="view" id="view-money">
+      <div class="hero compact report-hero">
+        <h1>Деньги</h1>
+        <div class="nav-period">
+          <button class="icon-btn" id="moneyPrev" aria-label="Прошлый месяц">‹</button>
+          <span id="moneyMonth"></span>
+          <button class="icon-btn" id="moneyNext" aria-label="Следующий месяц">›</button>
+        </div>
+      </div>
+
+      <div class="kpis money-kpis">
+        <div class="kpi income"><div class="label">Заработал</div><div class="value" id="mIncome">0</div><span class="delta flat" id="mIncomeD"></span></div>
+        <div class="kpi expense"><div class="label">Потратил</div><div class="value" id="mExpense">0</div><span class="delta flat" id="mExpenseD"></span></div>
+        <div class="kpi"><div class="label">Остаток</div><div class="value" id="mBalance">0</div><span class="delta flat" id="mBalanceD"></span></div>
+        <div class="kpi"><div class="label">В среднем в день</div><div class="value" id="mDaily">0</div><span class="delta flat">тратишь</span></div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head">
+            <div class="seg" id="moneyType">
+              <button data-type="expense" class="active">− Расход</button>
+              <button data-type="income">+ Доход</button>
+            </div>
+            <input type="date" id="moneyDate" class="date-input">
+          </div>
+          <form id="moneyForm" autocomplete="off">
+            <div class="amount-wrap">
+              <input type="number" id="moneyAmount" min="0" step="0.01" inputmode="decimal" placeholder="0" required>
+              <span class="cur" id="moneyCur">₽</span>
+            </div>
+            <div class="field" style="margin-top:14px">
+              <label>Категория</label>
+              <div class="chips" id="moneyCats"></div>
+            </div>
+            <input id="moneyNote" placeholder="Комментарий (необязательно)" maxlength="120" style="margin-top:14px">
+            <div class="form-foot">
+              <span class="hint">Enter — сохранить</span>
+              <button class="btn primary" type="submit" id="moneySubmit">Добавить расход</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h2>Куда ушли деньги</h2></div>
+          <div id="moneyCatBars"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Операции за месяц</h2><span class="pill" id="moneyCount"></span></div>
+        <div id="moneyList"></div>
+      </div>
+    </section>
+
     <!-- ============ REPORTS ============ -->
     <section class="view" id="view-reports">
       <div class="hero compact report-hero">
@@ -185,6 +242,13 @@
         <label class="switch"><input type="checkbox" id="optReminder"><span>Напоминание вечером, если день не заполнен</span></label>
         <div class="row"><label for="reminderTime">Время напоминания</label><input type="time" id="reminderTime" value="21:00"></div>
         <label class="switch"><input type="checkbox" id="optTheme"><span>Светлая тема</span></label>
+        <div class="row"><label for="optCurrency">Валюта</label>
+          <select id="optCurrency" style="width:auto">
+            <option value="₽">₽ рубль</option><option value="₴">₴ гривна</option><option value="$">$ доллар</option>
+            <option value="€">€ евро</option><option value="₸">₸ тенге</option><option value="Br">Br бел. рубль</option>
+            <option value="zł">zł злотый</option>
+          </select>
+        </div>
       </div>
 
       <div class="card">
@@ -199,11 +263,11 @@
     </section>
   </main>
 
-  <footer class="foot">Хроника · сделано с ❤️ · <kbd>N</kbd> новая запись · <kbd>R</kbd> отчёт</footer>
+  <footer class="foot">Хроника · сделано с ❤️ · <kbd>N</kbd> новая запись · <kbd>M</kbd> деньги · <kbd>R</kbd> отчёт</footer>
 
   <div id="toast" class="toast"></div>
 
-  <script src="config.js?v=3"></script>
-  <script type="module" src="app.js?v=3"></script>
+  <script src="config.js?v=4"></script>
+  <script type="module" src="app.js?v=4"></script>
 </body>
 </html>
