@@ -182,6 +182,7 @@ textarea:focus, input:focus, select:focus { border-color: var(--accent); box-sha
 .mood button.on { filter: none; opacity: 1; border-color: var(--accent); background: var(--accent-soft); transform: scale(1.08); }
 .saved-hint { min-height: 18px; margin: 6px 0 0; }
 
+.pill:empty { display: none; }
 .pill { font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
 :root:not(.light) .pill { color: #b9a8ff; }
 
